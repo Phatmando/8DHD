@@ -28,21 +28,21 @@ and the broader Ω–Φ framework, 8DHD, and fractal prime structures.
 
 ## Quick Start
 
-# 1) Install dependencies (if you haven't already)
+1) Install dependencies (if you haven't already)
 pip install numpy matplotlib scipy
 
-# 2) Generate & save a 2D interference map
+2) Generate & save a 2D interference map
 python scripts/prime_fm.py --triplets 200 --up 20 --save out.png
 
-# 3) Render the algorithmic steps to PDF
+3) Render the algorithmic steps to PDF
 python scripts/latex2pdf_letter.py -o equations.pdf
 
 Acknowledgements
 
-    I did not invent the prime‐triplet field—credit goes to the original
-    Prime Scalar Field community (theprimescalarfield.com & r/thePrimeScalarField).
-    As far as I know though the π‑twist recursion & scalar‑generated torus nesting are novel
-    This toolkit simply explores the beautiful structures they uncovered.
+I did not invent the prime‐triplet field—credit goes to the original
+Prime Scalar Field community (theprimescalarfield.com & r/thePrimeScalarField).
+As far as I know though the π‑twist recursion & scalar‑generated torus nesting are novel
+This toolkit simply explores the beautiful structures they uncovered.
 
 License
 
