@@ -14,12 +14,12 @@ and the broader Ω–Φ framework, 8DHD, and fractal prime structures.
 
 | File                                  | Description                                                  |
 |---------------------------------------|--------------------------------------------------------------|
-| [`prime_fm.py`](scripts/prime_fm.py)          | Generate primes, triplets, FM-sine waves, and interference maps. |
-| [`latex2pdf_letter.py`](scripts/latex2pdf_letter.py) | Compile the LaTeX math recipe into a US-Letter PDF.          |
+| [`prime_fm.py`](8DHD/scripts/prime_fm.py)          | Generate primes, triplets, FM-sine waves, and interference maps. |
+| [`latex2pdf_letter.py`](8DHD/scripts/latex2pdf_letter.py) | Compile the LaTeX math recipe into a US-Letter PDF.          |
 
 ### Resources
 
-- [`equations.pdf`](equations.pdf)  
+- [`equations.pdf`](8DHD/equations.pdf)  
   The rendered LaTeX explainer of the math/algorithm pipeline.  
 - **Website**: <https://theprimescalarfield.com/>  
   High-level narrative, visuals, and ongoing updates.  
