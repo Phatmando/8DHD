@@ -39,7 +39,7 @@ python scripts/latex2pdf_letter.py -o equations.pdf
 
 Acknowledgements
 
-I did not invent the prime‐triplet field—credit goes to the original
+I did not find the prime strings credit goes to the original
 Prime Scalar Field community (theprimescalarfield.com & r/thePrimeScalarField).
 As far as I know though the π‑twist recursion & scalar‑generated torus nesting are novel
 This toolkit simply explores the beautiful structures they uncovered.
