@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Prime-FM Torus Visualizer</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#fff;font-family:sans-serif}
+  #play{position:absolute;top:16px;left:16px;z-index:10;padding:6px 12px;border:0;border-radius:4px;
+        font-weight:bold;cursor:pointer;background:#fff;color:#000}
+  canvas{display:block;width:100%;height:100%}
+</style>
+</head>
+<body>
+<button id="play">PLAY Prime-FM</button>
+<canvas id="c"></canvas>
+
+<script type="module">
+/* ─── 0. Three.js & controls (CDN) ─────────────────────────────────── */
+import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+import { OrbitControls } from 'https://unpkg.com/three@0.161.0/examples/jsm/controls/OrbitControls.js';
+
+/* ─── 1. Math helpers: primes → phase ─────────────────────────────── */
+function firstNPrimes(n){
+  if(n<=0) return [];
+  if(n<6)  return [2,3,5,7,11,13].slice(0,n);
+  const B=Math.ceil(n*(Math.log(n)+Math.log(Math.log(n)))+100);
+  const sieve=new Uint8Array(B+1); sieve[0]=sieve[1]=1;
+  for(let p=2;p*p<=B;p++) if(!sieve[p])
+    for(let k=p*p;k<=B;k+=p) sieve[k]=1;
+  const primes=[];
+  for(let i=2;i<=B&&primes.length<n;i++) if(!sieve[i]) primes.push(i);
+  return primes;
+}
+const primeGaps = arr => arr.slice(1).map((v,i)=>v-arr[i]);
+
+function phaseFromGaps(gaps,nTrips,up=20,fmin=1,fmax=10){
+  const g=gaps.slice(0,nTrips);
+  const gMin=Math.min(...g), gMax=Math.max(...g);
+  const fInst=g.map(x=>fmin+((x-gMin)/(gMax-gMin||1))*(fmax-fmin));
+  const nFine=nTrips*up;
+  const phase=new Float32Array(nFine);
+  let acc=0, k=2*Math.PI/up;
+  for(let i=0;i<nFine;i++){
+    const j=Math.min(Math.floor(i/up),fInst.length-1);
+    acc+=k*fInst[j];
+    phase[i]=acc;
+  }
+  return phase;
+}
+
+/* ─── 2. Quick WebGL availability check ───────────────────────────── */
+function hasWebGL(){
+  const c=document.createElement('canvas');
+  return !!(window.WebGLRenderingContext &&
+            (c.getContext('webgl')||c.getContext('experimental-webgl')));
+}
+
+/* ─── 3. Three.js + Web Audio set-up ──────────────────────────────── */
+const canvas = document.getElementById('c');
+const playBtn = document.getElementById('play');
+
+if(!hasWebGL()){
+  playBtn.disabled=true;
+  const msg=document.createElement('div');
+  Object.assign(msg.style,{
+    position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+    color:'#ffb347',textAlign:'center',fontSize:'18px',whiteSpace:'pre'
+  });
+  msg.textContent='⚡ WebGL not available.\nEnable hardware acceleration\nor try another browser.';
+  document.body.append(msg);
+}else{
+  /* Three.js scene */
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  renderer.setPixelRatio(window.devicePixelRatio);
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,100);
+  camera.position.set(0,0,6);
+  const controls=new OrbitControls(camera,canvas); controls.enableDamping=true;
+
+  scene.add(new THREE.AmbientLight(0xffffff,0.6));
+  const dir=new THREE.DirectionalLight(0xffffff,0.8);
+  dir.position.set(5,5,5); scene.add(dir);
+
+  const SEG=512;
+  const geo=new THREE.TorusGeometry(2,0.4,64,SEG);
+  const magsArr=new Float32Array(SEG);
+  const mat=new THREE.ShaderMaterial({
+    uniforms:{mags:{value:magsArr}},
+    vertexShader:/* glsl */`
+      uniform float mags[${SEG}];
+      varying float vMag;
+      void main(){
+        int idx=int(mod(position.y+${SEG.toFixed(1)}*0.5,${SEG.toFixed(1)}));
+        vMag=mags[idx]*0.003;
+        vec3 pos=position+normal*vMag;
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(pos,1.0);
+      }`,
+    fragmentShader:/* glsl */`
+      varying float vMag;
+      void main(){
+        vec3 cold=vec3(0.1,0.2,0.9);
+        vec3 hot =vec3(0.9,0.2,0.1);
+        vec3 col =mix(cold,hot,clamp(vMag*8.0,0.0,1.0));
+        gl_FragColor=vec4(col,1.0);
+      }`
+  });
+  scene.add(new THREE.Mesh(geo,mat));
+
+  function onResize(){
+    renderer.setSize(innerWidth,innerHeight);
+    camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize',onResize); onResize();
+
+  /* animation loop */
+  let analyser=null;
+  (function animate(){
+    requestAnimationFrame(animate);
+    if(analyser){
+      analyser.getFloatFrequencyData(magsArr);
+      for(let i=0;i<magsArr.length;i++) magsArr[i]=(magsArr[i]+140)/140;
+    }
+    controls.update();
+    renderer.render(scene,camera);
+  })();
+
+  /* PLAY button → build audio + start analyser */
+  playBtn.addEventListener('click', async ()=>{
+    playBtn.disabled=true; playBtn.textContent='Loading…';
+
+    const nTrips=200, sr=48000;
+    const primes=firstNPrimes(nTrips+1);
+    const phase=phaseFromGaps(primeGaps(primes),nTrips,sr,50,1800);
+    const samples=Float32Array.from(phase,Math.sin);
+
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    analyser=ctx.createAnalyser(); analyser.fftSize=SEG*2; analyser.smoothingTimeConstant=0.7;
+
+    const buf=ctx.createBuffer(1,samples.length,ctx.sampleRate);
+    buf.copyToChannel(samples,0);
+    const src=ctx.createBufferSource(); src.buffer=buf; src.loop=true;
+    src.connect(analyser).connect(ctx.destination); src.start();
+
+    playBtn.style.display='none';
+  });
+}
+</script>
+</body>
+</html>
